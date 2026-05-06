@@ -1,0 +1,19 @@
+---
+- name: Full stack deployment with monitoring
+  hosts: all
+  gather_facts: yes
+
+- name: Configure database
+  import_playbook: postgresql.yml
+
+- name: Deploy API
+  import_playbook: fastapi.yml
+
+- name: Configure HAProxy
+  import_playbook: haproxy.yml
+
+- name: Install node_exporter
+  import_playbook: node_exporter.yml
+
+- name: Configure monitoring
+  import_playbook: monitoring.yml

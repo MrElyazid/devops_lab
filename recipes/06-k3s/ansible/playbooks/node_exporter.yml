@@ -1,0 +1,17 @@
+---
+- name: Install node_exporter
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install node_exporter
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name: prometheus-node-exporter
+        state: present
+
+    - name: Start and enable node_exporter
+      systemd:
+        name: prometheus-node-exporter
+        state: started
+        enabled: yes

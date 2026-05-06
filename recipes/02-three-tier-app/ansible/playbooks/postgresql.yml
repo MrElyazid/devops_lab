@@ -1,0 +1,89 @@
+---
+- name: Configure PostgreSQL
+  hosts: db
+  become: yes
+  vars:
+    pg_version: 16
+    db_name: labdb
+    db_user: labuser
+    db_password: labpass
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install PostgreSQL
+      apt:
+        name:
+          - "postgresql-{{ pg_version }}"
+          - python3-psycopg2
+        state: present
+
+    - name: Start and enable PostgreSQL
+      systemd:
+        name: "postgresql@{{ pg_version }}-main"
+        state: started
+        enabled: yes
+
+    - name: Create database
+      become_user: postgres
+      postgresql_db:
+        name: "{{ db_name }}"
+
+    - name: Create database user
+      become_user: postgres
+      postgresql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+
+    - name: Grant database privileges
+      become_user: postgres
+      postgresql_query:
+        login_db: "{{ db_name }}"
+        query: "GRANT ALL PRIVILEGES ON DATABASE {{ db_name }} TO {{ db_user }}"
+
+    - name: Grant schema privileges
+      become_user: postgres
+      postgresql_query:
+        login_db: "{{ db_name }}"
+        query: "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ db_user }}; ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ db_user }}"
+
+    - name: Create items table
+      become_user: postgres
+      postgresql_query:
+        login_db: "{{ db_name }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS items (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            price NUMERIC(10, 2) NOT NULL
+          )
+
+    - name: Seed items table
+      become_user: postgres
+      postgresql_query:
+        login_db: "{{ db_name }}"
+        query: |
+          INSERT INTO items (name, price) VALUES
+            ('Widget', 9.99),
+            ('Gadget', 24.99),
+            ('Doodad', 4.49)
+          ON CONFLICT DO NOTHING
+
+    - name: Listen on all interfaces
+      lineinfile:
+        path: "/etc/postgresql/{{ pg_version }}/main/postgresql.conf"
+        regexp: "^#?listen_addresses"
+        line: "listen_addresses = '*'"
+
+    - name: Allow lab-net connections
+      lineinfile:
+        path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+        line: "host all all 10.10.10.0/24 md5"
+        insertafter: EOF
+
+    - name: Restart PostgreSQL
+      systemd:
+        name: "postgresql@{{ pg_version }}-main"
+        state: restarted

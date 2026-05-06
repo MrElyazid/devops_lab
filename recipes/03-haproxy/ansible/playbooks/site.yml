@@ -1,0 +1,13 @@
+---
+- name: Three-tier app deployment with HAProxy
+  hosts: all
+  gather_facts: yes
+
+- name: Configure database
+  import_playbook: postgresql.yml
+
+- name: Deploy API
+  import_playbook: fastapi.yml
+
+- name: Configure HAProxy
+  import_playbook: haproxy.yml

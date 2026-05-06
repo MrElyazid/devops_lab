@@ -1,0 +1,16 @@
+---
+- name: Docker stack deployment
+  hosts: all
+  gather_facts: yes
+
+- name: Deploy Docker app stack
+  import_playbook: docker.yml
+
+- name: Configure HAProxy
+  import_playbook: haproxy.yml
+
+- name: Install node_exporter
+  import_playbook: node_exporter.yml
+
+- name: Configure monitoring
+  import_playbook: monitoring.yml

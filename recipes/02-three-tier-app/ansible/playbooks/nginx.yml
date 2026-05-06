@@ -1,0 +1,46 @@
+---
+- name: Configure Nginx
+  hosts: web
+  become: yes
+  vars:
+    api_host: 10.10.10.11
+    api_port: 8000
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Remove default site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Deploy reverse proxy config
+      template:
+        src: ../templates/fastapi.conf.j2
+        dest: /etc/nginx/sites-available/fastapi
+      notify: restart nginx
+
+    - name: Enable site
+      file:
+        src: /etc/nginx/sites-available/fastapi
+        dest: /etc/nginx/sites-enabled/fastapi
+        state: link
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted

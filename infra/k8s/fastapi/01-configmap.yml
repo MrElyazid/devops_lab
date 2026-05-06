@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fastapi-config
+  namespace: lab
+data:
+  DB_HOST: "postgres.lab.svc.cluster.local"
+  DB_NAME: "labdb"
+  DB_USER: "labuser"
+  DB_PASSWORD: "labpass"

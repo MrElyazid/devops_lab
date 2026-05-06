@@ -1,0 +1,16 @@
+---
+- name: k3s stack deployment
+  hosts: all
+  gather_facts: yes
+
+- name: Install k3s cluster
+  import_playbook: k3s.yml
+
+- name: Configure HAProxy
+  import_playbook: haproxy.yml
+
+- name: Install node_exporter
+  import_playbook: node_exporter.yml
+
+- name: Configure monitoring
+  import_playbook: monitoring.yml

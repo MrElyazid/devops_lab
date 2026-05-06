@@ -1,0 +1,24 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+ansible/roles/*/
+ansible/collections/
+
+# VM artifacts
+**/*.img
+**/*.qcow2
+infra/pool/
+
+# Recipes (reference copies — not a live workspace)
+recipes/**/terraform/.terraform/
+recipes/**/terraform/*.tfstate*
+
+# OS
+.DS_Store

@@ -1,0 +1,26 @@
+global
+    daemon
+    maxconn 256
+
+defaults
+    mode http
+    timeout connect 5s
+    timeout client 30s
+    timeout server 30s
+
+frontend http-in
+    bind *:80
+    default_backend api_servers
+
+backend api_servers
+    balance roundrobin
+    option httpchk GET /items
+{% for srv in api_servers %}
+    server {{ srv.name }} {{ srv.host }}:{{ srv.port }} check
+{% endfor %}
+
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /
+    stats refresh 10s

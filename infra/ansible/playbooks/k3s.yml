@@ -1,0 +1,132 @@
+---
+- name: Install k3s on master
+  hosts: k3s_master
+  become: yes
+  tasks:
+    - name: Install k3s server
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready
+      command: k3s kubectl get nodes
+      register: result
+      until: result.rc == 0
+      retries: 30
+      delay: 5
+
+- name: Set cluster facts
+  hosts: k3s_master
+  become: yes
+  tasks:
+    - name: Store node token as fact
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: token
+
+- name: Install k3s on worker
+  hosts: k3s_worker
+  become: yes
+  vars:
+    master_ip: "{{ hostvars['k3s-master'].ansible_host }}"
+    k3s_token: "{{ hostvars['k3s-master'].token.content | b64decode | trim }}"
+  tasks:
+    - name: Install k3s agent
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ master_ip }}:6443 K3S_TOKEN={{ k3s_token }} sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+- name: Wait for nodes
+  hosts: k3s_master
+  become: yes
+  tasks:
+    - name: Wait for all nodes to be ready
+      shell: kubectl get nodes --no-headers | grep -v Ready | wc -l
+      register: not_ready
+      until: not_ready.stdout == "0"
+      retries: 30
+      delay: 10
+
+- name: Install Docker on all k3s nodes
+  hosts: k3s_master:k3s_worker
+  become: yes
+  tasks:
+    - name: Install prerequisites
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker engine
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+        state: present
+
+    - name: Create app directory
+      file:
+        path: /opt/app
+        state: directory
+
+    - name: Copy app files
+      copy:
+        src: "{{ item }}"
+        dest: /opt/app/
+      loop:
+        - ../../app/Dockerfile
+        - ../../app/main.py
+        - ../../app/requirements.txt
+
+    - name: Build FastAPI image
+      command: docker build -t fastapi:latest .
+      args:
+        chdir: /opt/app
+
+    - name: Import image into k3s containerd
+      shell: docker save fastapi:latest | k3s ctr images import -
+
+- name: Apply manifests
+  hosts: k3s_master
+  become: yes
+  tasks:
+    - name: Copy k3s manifests
+      copy:
+        src: ../../k8s/
+        dest: /opt/k8s/
+
+    - name: Apply k3s manifests
+      command: k3s kubectl apply -R -f /opt/k8s/
+
+    - name: Wait for postgres pod
+      command: k3s kubectl wait --for=condition=ready pod -l app=postgres -n lab --timeout=180s
+
+    - name: Wait for fastapi pods
+      command: k3s kubectl wait --for=condition=ready pod -l app=fastapi -n lab --timeout=180s
+
+    - name: Verify deployment
+      command: k3s kubectl get pods,svc -n lab
+      register: pods
+    - debug:
+        var: pods.stdout_lines

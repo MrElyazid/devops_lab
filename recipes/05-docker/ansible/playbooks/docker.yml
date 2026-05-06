@@ -1,0 +1,62 @@
+---
+- name: Deploy app stack with Docker
+  hosts: app
+  become: yes
+  tasks:
+    - name: Install prerequisites
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Create app directory
+      file:
+        path: /opt/app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copy app files
+      copy:
+        src: "{{ item }}"
+        dest: /opt/app/
+      loop:
+        - ../../app/Dockerfile
+        - ../../app/docker-compose.yml
+        - ../../app/init.sql
+        - ../../app/main.py
+        - ../../app/requirements.txt
+
+    - name: Run docker compose up
+      command: docker compose up -d --wait
+      args:
+        chdir: /opt/app
+      changed_when: false

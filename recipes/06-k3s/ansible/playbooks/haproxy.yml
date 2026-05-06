@@ -1,0 +1,40 @@
+---
+- name: Configure HAProxy
+  hosts: web
+  become: yes
+  vars:
+    api_servers:
+      - { name: k3s-master, host: 10.10.10.40, port: 30000 }
+      - { name: k3s-worker, host: 10.10.10.41, port: 30000 }
+  tasks:
+    - name: Stop and disable Nginx (conflicts on port 80)
+      systemd:
+        name: nginx
+        state: stopped
+        enabled: no
+      failed_when: false
+
+    - name: Install HAProxy
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name: haproxy
+        state: present
+
+    - name: Deploy HAProxy config
+      template:
+        src: ../templates/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+      notify: restart haproxy
+
+    - name: Start and enable HAProxy
+      systemd:
+        name: haproxy
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart haproxy
+      systemd:
+        name: haproxy
+        state: restarted
