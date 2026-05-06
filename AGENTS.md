@@ -15,7 +15,7 @@ Each exercise builds on the previous. `infra/terraform/` is the live workspace; 
 - GitHub: `https://github.com/dmacvicar/terraform-provider-libvirt/blob/main/docs/resources/`
 - Terraform Registry: `https://registry.terraform.io/providers/dmacvicar/libvirt/latest/docs` (JS-walled — fetch raw .md from GitHub instead)
 
-Install on Arch: `yay -S terraform-provider-libvirt`
+Install: the `dmacvicar/libvirt` provider from your distribution or upstream releases.
 
 ## Hard-earned gotchas
 
@@ -37,14 +37,12 @@ Install on Arch: `yay -S terraform-provider-libvirt`
 
 7. **Storage pool `target.path`** must NOT exist before creation — libvirt will fail to define the pool.
 
-8. **`mkisofs` required** for `libvirt_cloudinit_disk` — `pacman -S cdrkit`.
+8. **`mkisofs`/`genisoimage` required** for `libvirt_cloudinit_disk` — install via your distribution's package manager.
 
 9. **cloud-init runs once** — changing user_data after first boot has no effect. Must destroy/recreate the VM (or change instance-id in meta_data).
 
 ## Provider install & version
-```bash
-yay -S terraform-provider-libvirt   # v0.9.x
-```
+Install `dmacvicar/libvirt` v0.9.x from your distribution's package manager or the upstream release.
 
 Terraform version constraint: `version = "~> 0.9.0"`
 

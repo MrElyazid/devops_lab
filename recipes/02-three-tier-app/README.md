@@ -6,7 +6,7 @@ three-tier web application: Nginx → FastAPI → PostgreSQL.
 
 ## Prerequisites
 - Recipe 01 completed (base pool, network, web-01 exists)
-- `ansible` installed on the host: `pacman -S ansible`
+- `ansible` installed on the host
 
 ## Architecture
 
@@ -123,4 +123,4 @@ curl -s http://10.10.10.10/items | python3 -m json.tool
 - **systemd units need `daemon_reload: yes`** after writing the service file.
 - **FastAPI environment variables** are set in the systemd unit file (`Environment=`).
 - **The app is copied via Ansible** — no git clone needed, just `copy` the source.
-- **You need Ansible on the host** — `pacman -S ansible`. The VMs don't need it.
+- **You need Ansible on the host**.  The VMs don't need it.

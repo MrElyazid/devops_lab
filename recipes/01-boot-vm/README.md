@@ -5,7 +5,7 @@ Provision a running Ubuntu 24.04 VM reachable via SSH at `10.10.10.10`, using
 Terraform + libvirt.
 
 ## Prerequisites
-- Arch Linux with `qemu-desktop`, `libvirt`, `mkisofs` (`pacman -S cdrkit`)
+- QEMU/KVM, libvirt, and `mkisofs`/`genisoimage` installed (needed by the cloud-init resource)
 - User in the `libvirt` group: `groups | grep libvirt`
 - `libvirtd.service` running: `systemctl status libvirtd`
 - SSH key pair at `~/.ssh/lab_key` (generate: `ssh-keygen -t ed25519 -f ~/.ssh/lab_key -N ""`)
@@ -19,10 +19,7 @@ Terraform + libvirt.
 
 ### 1. Install the Terraform libvirt provider
 
-```bash
-yay -S terraform-provider-libvirt          # v0.9.x
-```
-
+Install `dmacvicar/libvirt` v0.9.x from your distribution or upstream.
 This provider was rewritten at v0.9 — it mirrors libvirt XML directly.
 Old examples found online with `mode = "nat"` or `dhcp {}` blocks won't work.
 Use the docs at:
@@ -327,7 +324,7 @@ ssh ubuntu@10.10.10.10 'hostname && uname -r && uptime'
   tricky schema in v0.9.x. The IP is deterministic (`10.10.10.10`).
 - **Pool directory must not exist** — `rmdir /hdd/coding/devops_lab/pool` first
   if it does.
-- **`mkisofs` required** — `pacman -S cdrkit`.
+- **`mkisofs`/`genisoimage` required** — install via your package manager.
 - **cloud-init runs once** — changing user_data after first boot has no effect.
   Destroy and recreate the VM (or change `instance-id` in meta_data).
 - **SSH key path** — the config above uses `lab_key.pub`. Adjust to your key.
