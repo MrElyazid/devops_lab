@@ -1,19 +1,21 @@
 # devops_lab
 
 A local DevOps practice environment on one machine: QEMU/KVM + libvirt run the
-virtual machines, Terraform provisions them, Ansible configures them, and the
-course ends with a two-node k3s cluster.
+virtual machines, Terraform provisions them, Ansible configures them.
+
+Everything is done thanks to : https://github.com/dmacvicar/terraform-provider-libvirt
+
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `recipes/one-vm/` | Minimal Terraform template for a single Ubuntu VM |
-| `recipes/zero-to-k3s/NN-*/` | Complete, independently runnable snapshots of the six stages |
+| [`recipes/one-vm/`](./recipes/one-vm/) | Minimal Terraform template for a single Ubuntu VM |
+| [`recipes/zero-to-k3s/NN-*/`](./recipes/zero-to-k3s/) | Complete, independently runnable snapshots of the six stages |
 | `labs/` | Independent experiments; each has its own state, subnet and pool |
 | `infra/` | Generated workspace (gitignored); never treat it as the source |
 
-Each stage is a full snapshot, not a delta. `make render STAGE=...` copies one
+Each stage is a full snapshot, `make render STAGE=...` copies one
 into `infra/`. The six stages share the persistent `lab-pool` (created once with
 `make pool`); `recipes/one-vm` remains self-contained and defines its own pool.
 
@@ -26,18 +28,7 @@ into `infra/`. The six stages share the persistent `lab-pool` (created once with
 - SSH key at `~/.ssh/lab_key` (the public key is injected by cloud-init)
 - The persistent storage pool `lab-pool` (create once with `make pool`)
 
-## Stages
-
-| Stage | Builds |
-|---|---|
-| `01-boot-vm` | One Ubuntu VM on a NAT network, reachable over SSH |
-| `02-three-tier-app` | Nginx + FastAPI + PostgreSQL, configured with Ansible |
-| `03-haproxy` | HAProxy in front of two FastAPI backends |
-| `04-monitoring` | Prometheus + Grafana + node_exporter on all VMs |
-| `05-docker` | The app stack containerized with Docker Compose |
-| `06-k3s` | Two-node k3s cluster running PostgreSQL and FastAPI |
-
-## Use
+## Usage
 
 ```bash
 make pool          # once per host; idempotent
