@@ -1,3 +1,6 @@
+# generated live workspace
+infra/
+
 # Terraform
 **/.terraform/
 *.tfstate
@@ -11,14 +14,16 @@
 ansible/roles/*/
 ansible/collections/
 
-# VM artifacts
+# VM storage and cloud-init artifacts
+pool*/
 **/*.img
 **/*.qcow2
-infra/pool/
+*.iso
 
-# Recipes (reference copies — not a live workspace)
-recipes/**/terraform/.terraform/
-recipes/**/terraform/*.tfstate*
+# Python
+__pycache__/
+*.pyc
+.venv/
 
 # OS
 .DS_Store

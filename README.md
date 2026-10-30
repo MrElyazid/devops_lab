@@ -1,32 +1,76 @@
 # devops_lab
 
-A local DevOps practice environment using QEMU/KVM.
-Provisions VMs with Terraform, configures them with Ansible, and
-progressively introduces Docker and k3s — all on one machine.
+A local DevOps practice environment on one machine: QEMU/KVM + libvirt run the
+virtual machines, Terraform provisions them, Ansible configures them, and the
+course ends with a two-node k3s cluster.
 
-## Stack
+## Layout
 
-- **Terraform** — `dmacvicar/libvirt` provider (v0.9.x) for VM provisioning
-- **Ansible** — configuration management and deployment
-- **HAProxy** — TCP/HTTP load balancer
-- **Prometheus + Grafana** — metrics collection and dashboards
-- **Docker / docker compose** — containerized application stack
-- **k3s** — lightweight Kubernetes distribution
+| Path | Purpose |
+|---|---|
+| `recipes/one-vm/` | Minimal Terraform template for a single Ubuntu VM |
+| `recipes/zero-to-k3s/NN-*/` | Complete, independently runnable snapshots of the six stages |
+| `labs/` | Independent experiments; each has its own state, subnet and pool |
+| `infra/` | Generated workspace (gitignored); never treat it as the source |
 
-## Recipes
+Each stage is a full snapshot, not a delta. `make render STAGE=...` copies one
+into `infra/`. The six stages share the persistent `lab-pool` (created once with
+`make pool`); `recipes/one-vm` remains self-contained and defines its own pool.
 
-Each recipe is a self-contained exercise that builds on the previous one.
+## Prerequisites
 
-| # | Recipe | What you build |
-|---|--------|---------------|
-| 01 | [Boot a VM](./recipes/01-boot-vm/) | Terraform + libvirt: network, storage pool, cloud image, cloud-init, single VM with SSH |
-| 02 | [Three-tier app](./recipes/02-three-tier-app/) | Nginx reverse proxy, FastAPI + PostgreSQL, Ansible static inventory and playbooks |
-| 03 | [HAProxy](./recipes/03-haproxy/) | Load balancing with health checks and stats page, multiple backends |
-| 04 | [Monitoring](./recipes/04-monitoring/) | Prometheus + Grafana, node_exporter on all VMs, pre-provisioned dashboard |
-| 05 | [Docker](./recipes/05-docker/) | Containerize the app stack with Docker and docker compose |
-| 06 | [k3s](./recipes/06-k3s/) | Multi-node Kubernetes cluster: StatefulSet, Deployment, Services, NodePort |
+- QEMU/KVM and libvirt, user in the `libvirt` group
+- Terraform >= 1.5 with `dmacvicar/libvirt` 0.9.x
+- Ansible
+- `mkisofs` or `genisoimage` for cloud-init ISO generation
+- SSH key at `~/.ssh/lab_key` (the public key is injected by cloud-init)
+- The persistent storage pool `lab-pool` (create once with `make pool`)
 
-Each recipe has a `README.md` (step-by-step instructions) and a `concepts.md` (deep-dive explanation of the technologies used).
-The `infra/` directory is the live workspace. `terraform apply` and
-   `ansible-playbook` commands are run from there. The `recipes/` directory
-   contains reference copies of everything you should end up with.
+## Stages
+
+| Stage | Builds |
+|---|---|
+| `01-boot-vm` | One Ubuntu VM on a NAT network, reachable over SSH |
+| `02-three-tier-app` | Nginx + FastAPI + PostgreSQL, configured with Ansible |
+| `03-haproxy` | HAProxy in front of two FastAPI backends |
+| `04-monitoring` | Prometheus + Grafana + node_exporter on all VMs |
+| `05-docker` | The app stack containerized with Docker Compose |
+| `06-k3s` | Two-node k3s cluster running PostgreSQL and FastAPI |
+
+## Use
+
+```bash
+make pool          # once per host; idempotent
+make list
+make render STAGE=04-monitoring
+
+cd infra/terraform
+terraform init
+terraform apply
+
+cd ../ansible
+ansible-playbook playbooks/site.yml
+```
+
+Switch stages:
+
+```bash
+cd infra/terraform
+terraform destroy
+cd ../..
+make render STAGE=05-docker
+cd infra/terraform && terraform init && terraform apply
+```
+
+The `lab-pool` storage pool is persistent and not managed by Terraform, so it
+survives `terraform destroy`; only its volumes are removed. The next apply
+re-downloads the Ubuntu base image.
+
+`infra/` is disposable and gitignored. It also holds Terraform state; deleting
+it without `terraform destroy` leaves the VMs defined but unmanaged.
+
+## Labs
+
+Independent experiments go under `labs/<name>/` as their own Terraform root
+module, with unique network, pool and VM names and a subnet that does not
+overlap `10.10.10.0/24`. They are not part of the six-stage course.
